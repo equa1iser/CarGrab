@@ -51,7 +51,7 @@ async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
     return TokenResponse(
         access_token=auth_service.create_access_token(user.id),
         refresh_token=auth_service.create_refresh_token(user.id),
-        user=UserResponse.model_validate(user),
+        user=auth_service.make_user_response(user),
     )
 
 
@@ -65,7 +65,7 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
     return TokenResponse(
         access_token=auth_service.create_access_token(user.id),
         refresh_token=auth_service.create_refresh_token(user.id),
-        user=UserResponse.model_validate(user),
+        user=auth_service.make_user_response(user),
     )
 
 
@@ -86,13 +86,13 @@ async def refresh(
     return TokenResponse(
         access_token=auth_service.create_access_token(user.id),
         refresh_token=auth_service.create_refresh_token(user.id),
-        user=UserResponse.model_validate(user),
+        user=auth_service.make_user_response(user),
     )
 
 
 @router.get("/me", response_model=UserResponse)
 async def me(user: User = Depends(current_user)):
-    return UserResponse.model_validate(user)
+    return auth_service.make_user_response(user)
 
 
 @router.post("/forgot-password", status_code=204)
@@ -147,5 +147,5 @@ async def google_auth(body: GoogleAuthRequest, db: AsyncSession = Depends(get_db
     return TokenResponse(
         access_token=auth_service.create_access_token(user.id),
         refresh_token=auth_service.create_refresh_token(user.id),
-        user=UserResponse.model_validate(user),
+        user=auth_service.make_user_response(user),
     )

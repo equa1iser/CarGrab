@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Car, Search, Bookmark, Menu, X, ChevronDown, LogOut, User } from "lucide-react";
+import { Car, Search, Bookmark, Menu, X, ChevronDown, LogOut, Shield, User } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/lib/auth-context";
 
@@ -98,6 +98,16 @@ export function Navbar() {
                       <Bookmark className="h-3.5 w-3.5" />
                       Saved Searches
                     </Link>
+                    {user?.is_admin && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/5 transition-colors"
+                      >
+                        <Shield className="h-3.5 w-3.5" />
+                        Admin
+                      </Link>
+                    )}
                     <button
                       onClick={() => { logout(); setUserMenuOpen(false); }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors"
@@ -153,6 +163,16 @@ export function Navbar() {
                   </div>
                   <span className="text-sm text-slate-300 truncate">{user.email}</span>
                 </div>
+                {user?.is_admin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-cyan-400 hover:text-cyan-300 rounded-lg hover:bg-cyan-500/5 transition-colors"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <Shield className="h-3.5 w-3.5" />
+                    Admin
+                  </Link>
+                )}
                 <button
                   onClick={() => { logout(); setMobileOpen(false); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/5 transition-colors"

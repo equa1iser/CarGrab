@@ -60,5 +60,20 @@ class Settings(BaseSettings):
     # Sentry
     sentry_dsn: str = ""
 
+    # Admin access — comma-separated emails or JSON array
+    admin_emails: list[str] = []
+
+    @field_validator("admin_emails", mode="before")
+    @classmethod
+    def parse_admin_emails(cls, v):
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                return json.loads(v)
+            return [e.strip().lower() for e in v.split(",") if e.strip()]
+        return []
+
 
 settings = Settings()

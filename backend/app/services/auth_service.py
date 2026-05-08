@@ -97,3 +97,16 @@ async def consume_reset_token(token: str) -> str | None:
         r = get_redis()
         await r.delete(f"cargrab:reset:{token}")
     return email
+
+
+def is_admin(email: str) -> bool:
+    """Return True if the given email is in the configured admin_emails list."""
+    return email.lower() in [e.lower() for e in settings.admin_emails]
+
+
+def make_user_response(user: User) -> "UserResponse":
+    """Build a UserResponse, injecting is_admin from settings."""
+    from app.schemas.auth import UserResponse
+    resp = UserResponse.model_validate(user)
+    resp.is_admin = is_admin(user.email)
+    return resp

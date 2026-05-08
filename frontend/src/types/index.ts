@@ -96,5 +96,47 @@ export interface User {
   email: string;
   is_active: boolean;
   is_verified: boolean;
+  is_admin: boolean;
   created_at: string;
+}
+
+export interface SourceStatus {
+  id: number;
+  name: string;
+  base_url: string | null;
+  is_active: boolean;
+  is_enabled: boolean;
+  poll_interval_minutes: number;
+  last_polled: string | null;
+  total_polls: number;
+  total_listings_ingested: number;
+  last_error: string | null;
+  last_error_at: string | null;
+  api_key_configured: boolean;
+  listing_count: number;
+}
+
+export interface AdminStats {
+  total_listings: number;
+  active_listings: number;
+  total_users: number;
+  new_users_24h: number;
+  new_users_7d: number;
+  sources: SourceStatus[];
+  orchestrator_last_ran: string | null;
+}
+
+export interface UserSummary {
+  id: string;
+  email: string;
+  is_active: boolean;
+  is_verified: boolean;
+  has_google: boolean;
+  created_at: string;
+  saved_search_count: number;
+}
+
+export interface UserListResponse {
+  total: number;
+  users: UserSummary[];
 }

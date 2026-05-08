@@ -1,4 +1,4 @@
-import { ListingCard, ListingDetail, PaginatedListings, SavedSearch, SearchParams, User } from "@/types";
+import { AdminStats, ListingCard, ListingDetail, PaginatedListings, SavedSearch, SearchParams, SourceStatus, User, UserListResponse } from "@/types";
 
 // Server components run inside Docker where `localhost` doesn't reach the
 // backend container. Use API_INTERNAL_URL (Docker service name) server-side
@@ -118,6 +118,40 @@ export function createSavedSearch(
 export function deleteSavedSearch(token: string, id: string): Promise<void> {
   return request(`/api/v1/saved-searches/${id}`, {
     method: "DELETE",
+    headers: authHeader(token),
+  });
+}
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+
+export function getAdminStats(token: string): Promise<AdminStats> {
+  return request("/api/v1/admin/stats", { headers: authHeader(token) });
+}
+
+export function updateSource(
+  token: string,
+  id: number,
+  data: { is_enabled?: boolean; poll_interval_minutes?: number }
+): Promise<SourceStatus> {
+  return request(`/api/v1/admin/sources/${id}`, {
+    method: "PATCH",
+    headers: authHeader(token),
+    body: JSON.stringify(data),
+  });
+}
+
+export function triggerSource(
+  token: string,
+  id: number
+): Promise<{ queued: boolean; source: string }> {
+  return request(`/api/v1/admin/sources/${id}/trigger`, {
+    method: "POST",
+    headers: authHeader(token),
+  });
+}
+
+export function getAdminUsers(token: string, page = 1): Promise<UserListResponse> {
+  return request(`/api/v1/admin/users?page=${page}&page_size=20`, {
     headers: authHeader(token),
   });
 }
