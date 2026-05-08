@@ -1,6 +1,12 @@
 import { ListingCard, ListingDetail, PaginatedListings, SavedSearch, SearchParams, User } from "@/types";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Server components run inside Docker where `localhost` doesn't reach the
+// backend container. Use API_INTERNAL_URL (Docker service name) server-side
+// and NEXT_PUBLIC_API_URL (host-accessible) client-side.
+const BASE =
+  typeof window === "undefined"
+    ? (process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000")
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
