@@ -71,6 +71,27 @@ export async function register(email: string, password: string) {
   );
 }
 
+export async function googleAuth(credential: string) {
+  return request<{ access_token: string; refresh_token: string; user: User }>(
+    "/api/v1/auth/google",
+    { method: "POST", body: JSON.stringify({ credential }) }
+  );
+}
+
+export async function forgotPassword(email: string): Promise<void> {
+  await request("/api/v1/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(token: string, password: string): Promise<void> {
+  await request("/api/v1/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
+}
+
 // ── Saved searches ────────────────────────────────────────────────────────────
 
 export function getSavedSearches(token: string): Promise<SavedSearch[]> {

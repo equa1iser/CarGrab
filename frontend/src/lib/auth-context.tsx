@@ -9,7 +9,7 @@ import {
   useState,
   ReactNode,
 } from "react";
-import { login as apiLogin, register as apiRegister } from "@/lib/api";
+import { login as apiLogin, register as apiRegister, googleAuth as apiGoogleAuth } from "@/lib/api";
 import { User } from "@/types";
 
 interface AuthState {
@@ -20,6 +20,7 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
   logout: () => void;
   openSignIn: () => void;
   openRegister: () => void;
@@ -96,6 +97,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [persist]
   );
 
+  const googleLogin = useCallback(
+    async (credential: string) => {
+      const res = await apiGoogleAuth(credential);
+      persist({ user: res.user, token: res.access_token });
+    },
+    [persist]
+  );
+
   const logout = useCallback(() => {
     persist({ user: null, token: null });
   }, [persist]);
@@ -109,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...auth, login, register, logout, openSignIn, openRegister }}>
+    <AuthContext.Provider value={{ ...auth, login, register, googleLogin, logout, openSignIn, openRegister }}>
       {children}
     </AuthContext.Provider>
   );

@@ -46,6 +46,17 @@ class Settings(BaseSettings):
     nhtsa_api_base: str = "https://vpic.nhtsa.dot.gov/api"
     nhtsa_recalls_base: str = "https://api.nhtsa.gov/recalls"
 
+    # Google OAuth
+    google_client_id: str = ""
+
+    # SMTP (for password reset emails — leave blank in dev to log links to console)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "noreply@cargrab.com"
+    app_url: str = "http://localhost:3000"
+
     # Sentry
     sentry_dsn: str = ""
 
