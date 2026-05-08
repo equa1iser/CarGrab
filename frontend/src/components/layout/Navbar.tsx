@@ -1,19 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Car, Search, Bookmark, Menu, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Car, Search, Bookmark, Menu, X, ChevronDown, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/lib/auth-context";
 
 export function Navbar() {
+  const { user, logout, openSignIn, openRegister } = useAuth();
   const [scrolled, setScrolled] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
   }, []);
+
+  // Close user dropdown when clicking outside.
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [userMenuOpen]);
+
+  const initials = user?.email ? user.email[0].toUpperCase() : "";
 
   return (
     <header
@@ -53,32 +71,106 @@ export function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm">Sign In</Button>
-            <Button size="sm">Get Started</Button>
+            {user ? (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyan-400/30 hover:bg-white/5 transition-all duration-200"
+                >
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500/20 border border-cyan-500/30 text-xs font-bold text-cyan-400">
+                    {initials}
+                  </div>
+                  <span className="text-sm text-slate-300 max-w-[120px] truncate">{user.email}</span>
+                  <ChevronDown className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 glass rounded-xl border border-white/8 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="px-4 py-3 border-b border-white/6">
+                      <p className="text-xs text-slate-500">Signed in as</p>
+                      <p className="text-sm text-white font-medium truncate">{user.email}</p>
+                    </div>
+                    <Link
+                      href="/saved"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <Bookmark className="h-3.5 w-3.5" />
+                      Saved Searches
+                    </Link>
+                    <button
+                      onClick={() => { logout(); setUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" onClick={openSignIn}>Sign In</Button>
+                <Button size="sm" onClick={openRegister}>Get Started</Button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu toggle */}
           <button
             className="md:hidden p-2 text-slate-400 hover:text-white"
-            onClick={() => setOpen(!open)}
+            onClick={() => setMobileOpen(!mobileOpen)}
           >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
         {/* Mobile menu */}
-        {open && (
+        {mobileOpen && (
           <div className="md:hidden border-t border-white/6 py-4 space-y-1">
-            <Link href="/search" className="block px-3 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-white/5" onClick={() => setOpen(false)}>
+            <Link
+              href="/search"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-white/5"
+              onClick={() => setMobileOpen(false)}
+            >
+              <Search className="h-3.5 w-3.5" />
               Search Cars
             </Link>
-            <Link href="/saved" className="block px-3 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-white/5" onClick={() => setOpen(false)}>
+            <Link
+              href="/saved"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-white/5"
+              onClick={() => setMobileOpen(false)}
+            >
+              <Bookmark className="h-3.5 w-3.5" />
               Saved Searches
             </Link>
-            <div className="flex gap-2 pt-2">
-              <Button variant="ghost" size="sm" className="flex-1">Sign In</Button>
-              <Button size="sm" className="flex-1">Get Started</Button>
-            </div>
+
+            {user ? (
+              <div className="pt-2 border-t border-white/6 mt-2">
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500/20 border border-cyan-500/30 text-xs font-bold text-cyan-400">
+                    {initials}
+                  </div>
+                  <span className="text-sm text-slate-300 truncate">{user.email}</span>
+                </div>
+                <button
+                  onClick={() => { logout(); setMobileOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/5 transition-colors"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2 pt-2">
+                <Button variant="ghost" size="sm" className="flex-1" onClick={() => { openSignIn(); setMobileOpen(false); }}>
+                  Sign In
+                </Button>
+                <Button size="sm" className="flex-1" onClick={() => { openRegister(); setMobileOpen(false); }}>
+                  Get Started
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

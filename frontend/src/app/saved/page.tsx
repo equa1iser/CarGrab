@@ -1,39 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Bookmark, Trash2, Search, Lock } from "lucide-react";
+import { Bookmark, Trash2, Search, Lock, Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { formatDate } from "@/lib/formatters";
-import { SavedSearch } from "@/types";
+import { getSavedSearches, deleteSavedSearch } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { SavedSearch, SearchParams } from "@/types";
 
-// Auth is wired via session in a real deployment.
-// For now, this shows the UI with mock state management.
 export default function SavedPage() {
-  const [token] = useState<string | null>(null); // Replace with session token
+  const { user, token, openSignIn, openRegister } = useAuth();
   const [searches, setSearches] = useState<SavedSearch[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!token) {
-    return (
-      <div className="pt-20 min-h-screen flex items-center justify-center px-4">
-        <GlassCard className="p-10 max-w-sm w-full text-center space-y-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/10 border border-cyan-500/20 mx-auto">
-            <Lock className="h-5 w-5 text-cyan-400" />
-          </div>
-          <h1 className="text-xl font-bold text-white">Sign in to view saved searches</h1>
-          <p className="text-sm text-slate-400">
-            Create an account to save your searches and receive price alerts.
-          </p>
-          <Button className="w-full">Sign In</Button>
-          <Button variant="ghost" className="w-full">Create Account</Button>
-        </GlassCard>
-      </div>
-    );
+  const load = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getSavedSearches(token);
+      setSearches(data);
+    } catch {
+      setError("Failed to load saved searches.");
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleDelete(id: string) {
+    if (!token) return;
+    setSearches((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await deleteSavedSearch(token, id);
+    } catch {
+      // Reload if delete failed server-side
+      load();
+    }
   }
 
-  function buildSearchURL(filters: SavedSearch["filters"]): string {
+  function buildSearchURL(filters: SearchParams): string {
     const params = new URLSearchParams();
     for (const [k, v] of Object.entries(filters)) {
       if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
@@ -41,7 +54,7 @@ export default function SavedPage() {
     return `/search?${params.toString()}`;
   }
 
-  function renderFilterChips(filters: SavedSearch["filters"]) {
+  function renderFilterChips(filters: SearchParams) {
     const chips: string[] = [];
     if (filters.make) chips.push(filters.make);
     if (filters.model) chips.push(filters.model);
@@ -55,15 +68,55 @@ export default function SavedPage() {
     return chips;
   }
 
+  // Not logged in
+  if (!user) {
+    return (
+      <div className="pt-20 min-h-screen flex items-center justify-center px-4">
+        <GlassCard className="p-10 max-w-sm w-full text-center space-y-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/10 border border-cyan-500/20 mx-auto">
+            <Lock className="h-5 w-5 text-cyan-400" />
+          </div>
+          <h1 className="text-xl font-bold text-white">Sign in to view saved searches</h1>
+          <p className="text-sm text-slate-400">
+            Create an account to save your searches and receive price alerts.
+          </p>
+          <Button className="w-full" onClick={openSignIn}>Sign In</Button>
+          <Button variant="ghost" className="w-full" onClick={openRegister}>Create Account</Button>
+        </GlassCard>
+      </div>
+    );
+  }
+
   return (
     <div className="pt-20 min-h-screen">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex items-center gap-3 mb-8">
-          <Bookmark className="h-5 w-5 text-cyan-400" />
-          <h1 className="text-2xl font-bold text-white">Saved Searches</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <Bookmark className="h-5 w-5 text-cyan-400" />
+            <h1 className="text-2xl font-bold text-white">Saved Searches</h1>
+          </div>
+          {searches.length > 0 && (
+            <span className="text-sm text-slate-500">{searches.length} saved</span>
+          )}
         </div>
 
-        {searches.length === 0 ? (
+        {loading && (
+          <div className="flex items-center justify-center py-20 text-slate-500">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            Loading…
+          </div>
+        )}
+
+        {error && !loading && (
+          <GlassCard className="p-6 text-center text-red-400">
+            {error}
+            <button onClick={load} className="block mt-2 text-sm text-cyan-400 hover:text-cyan-300 mx-auto">
+              Try again
+            </button>
+          </GlassCard>
+        )}
+
+        {!loading && !error && searches.length === 0 && (
           <GlassCard className="p-12 text-center space-y-4">
             <Search className="h-8 w-8 text-slate-500 mx-auto" />
             <p className="text-slate-400">No saved searches yet.</p>
@@ -71,7 +124,9 @@ export default function SavedPage() {
               <Button variant="ghost">Start searching</Button>
             </Link>
           </GlassCard>
-        ) : (
+        )}
+
+        {!loading && searches.length > 0 && (
           <div className="space-y-4">
             {searches.map((ss) => {
               const chips = renderFilterChips(ss.filters);
@@ -106,7 +161,8 @@ export default function SavedPage() {
                       <Button
                         variant="danger"
                         size="sm"
-                        onClick={() => setSearches((prev) => prev.filter((s) => s.id !== ss.id))}
+                        onClick={() => handleDelete(ss.id)}
+                        aria-label="Delete saved search"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>

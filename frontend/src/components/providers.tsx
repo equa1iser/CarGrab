@@ -2,6 +2,8 @@
 
 import { SWRConfig } from "swr";
 import { ReactNode } from "react";
+import { AuthProvider } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth/AuthModal";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -11,7 +13,10 @@ export function Providers({ children }: { children: ReactNode }) {
         dedupingInterval: 5000,
       }}
     >
-      {children}
+      <AuthProvider>
+        {children}
+        <AuthModal />
+      </AuthProvider>
     </SWRConfig>
   );
 }
