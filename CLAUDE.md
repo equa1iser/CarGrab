@@ -1,5 +1,28 @@
 # CarGrab — Claude Code Guide
 
+## Working with Claude Code
+
+### Git Workflow
+After making any code changes, **always commit and push to GitHub** before ending the session:
+
+```bash
+git add <specific files>
+git commit -m "type: short summary
+
+Detailed body explaining what changed and why. List
+individual changes as bullets if there are several.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git push origin master
+```
+
+- Use conventional commit prefixes: `feat:`, `fix:`, `refactor:`, `docs:`, `chore:`
+- Write a body that explains *why*, not just *what*
+- After any significant feature or bug fix, update `README.md` if the public-facing docs are affected
+- Never push `.env` (it contains secrets) — it is already in `.gitignore`
+
+---
+
 ## Project Overview
 CarGrab is a used car listing aggregator. It pulls listings from multiple sources (CarMax, MarketCheck, Carvana) into one searchable interface. The backend is also designed to serve a future mobile app.
 
@@ -112,12 +135,17 @@ GET/POST/DELETE /api/v1/alerts
 
 ## Data Sources
 
-| Source      | Cost     | Status   | Notes |
-|-------------|----------|----------|-------|
-| CarMax      | Free     | Active   | Unofficial API — disable if contacted legally |
-| MarketCheck | ~$200–2k/mo | Key-gated | Set `MARKETCHECK_API_KEY` in `.env` |
-| NHTSA       | Free     | Active   | VIN decode + recalls only, no listings |
-| Carvana     | TBD      | Stub     | Set `CARVANA_API_KEY` when obtained |
+| Source      | Cost        | Status      | Notes |
+|-------------|-------------|-------------|-------|
+| Auto.dev    | Free (1k/mo)| Key-gated   | Best free API. Real dealer inventory. Sign up at https://auto.dev |
+| eBay Motors | Free        | Key-gated   | Private + dealer listings. Free developer account at https://developer.ebay.com |
+| CarMax      | Free        | Active      | Unofficial API — blocked by Akamai on cloud IPs; residential IP required |
+| MarketCheck | ~$200–2k/mo | Key-gated   | Commercial. Set `MARKETCHECK_API_KEY` in `.env` |
+| NHTSA       | Free        | Active      | VIN decode + recalls only, no listings |
+| Carvana     | TBD         | Stub        | Set `CARVANA_API_KEY` when obtained |
+| CarAPI      | Free        | Active      | Vehicle make/model/trim database. Powers search suggestions autocomplete (no key needed) |
+
+**Priority order**: Auto.dev API → eBay Motors API → MarketCheck (paid) → CarMax (residential IP only)
 
 **Never scrape**: Autotrader, Cars.com, CarGurus, Craigslist — all have active ToS enforcement and prior litigation.
 
@@ -174,11 +202,23 @@ See `.env.example` for the full list. Key ones:
 | `REDIS_URL` | Redis connection string |
 | `JWT_SECRET_KEY` | **Change in production** — use `openssl rand -hex 32` |
 | `CORS_ORIGINS` | JSON array string e.g. `["http://localhost:3000"]` |
-| `MARKETCHECK_API_KEY` | Optional — enables MarketCheck listings |
+| `AUTODEV_API_KEY` | Optional — enables Auto.dev dealer inventory (free tier: 1k calls/month) |
+| `EBAY_APP_ID` | Optional — eBay Motors App ID (free developer account) |
+| `EBAY_CERT_ID` | Optional — eBay Motors Cert ID (required alongside App ID) |
+| `MARKETCHECK_API_KEY` | Optional — enables MarketCheck listings (paid) |
 | `CARVANA_API_KEY` | Optional — enables Carvana listings |
+
+## Seed Data
+
+The repo ships with `backend/seed.py` — 30 realistic listings (Toyota, Honda, Ford, BMW, Tesla, etc.) seeded directly into the database. Useful for local dev without a live data source.
+
+```bash
+docker exec cargrab-backend-1 python seed.py
+```
 
 ## Known Issues / Future Work
 
+- **CarMax Akamai block**: CarMax's `POST /cars/api/search/run` endpoint is protected by Akamai Bot Manager. All automated requests (httpx, Playwright) are blocked because the Docker/cloud IP range is flagged. The Playwright scraper in `scraper/carmax.py` is production-ready but needs a residential proxy or real browser environment (e.g., a VPS with a residential ISP) to pass bot detection. Use the seed script for dev/demo.
 - **Auth UI**: The Sign In / Get Started buttons in the Navbar are wired to button stubs. NextAuth or a custom modal needs to be connected to `POST /api/v1/auth/login`.
 - **Photo caching**: Photos are hot-linked from source CDNs. Add a Celery task to download primary photos to S3/R2 and populate a `photo_cached_url` column.
 - **Mobile app**: The backend API is mobile-ready (JWT auth, versioned routes, proper CORS). Add the mobile app's origin to `CORS_ORIGINS` in `.env`.

@@ -16,8 +16,11 @@ export function ListingCard({ listing, animationDelay = 0 }: Props) {
 
   return (
     <div
-      className="opacity-0"
-      style={{ animation: `fadeUp 0.5s ease forwards`, animationDelay: `${animationDelay}ms` }}
+      style={{
+        animation: `fadeUp 0.5s ease both`,
+        animationDelay: `${animationDelay}ms`,
+        opacity: 0,
+      }}
     >
       <Link href={`/listing/${listing.id}`} className="block group">
         <GlassCard className="overflow-hidden hover:scale-[1.02] transition-transform duration-300">

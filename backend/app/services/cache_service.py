@@ -42,3 +42,16 @@ async def invalidate(namespace: str, params: dict) -> None:
     r = get_redis()
     key = _make_key(namespace, params)
     await r.delete(key)
+
+
+async def cache_get(key: str) -> Any:
+    """Get a value by raw key. Returns None if missing."""
+    r = get_redis()
+    raw = await r.get(f"cargrab:{key}")
+    return json.loads(raw) if raw else None
+
+
+async def cache_set(key: str, value: Any, ttl: int = 300) -> None:
+    """Set a value by raw key with TTL."""
+    r = get_redis()
+    await r.setex(f"cargrab:{key}", ttl, json.dumps(value, default=str))

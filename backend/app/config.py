@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # Data source keys
     marketcheck_api_key: str = ""
     carvana_api_key: str = ""
+    autodev_api_key: str = ""
+    ebay_app_id: str = ""
+    ebay_cert_id: str = ""
 
     # NHTSA (no key needed)
     nhtsa_api_base: str = "https://vpic.nhtsa.dot.gov/api"

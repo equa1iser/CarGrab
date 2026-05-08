@@ -14,8 +14,10 @@ from app.models.price_history import PriceHistory
 from app.models.saved_search import PriceAlert
 from app.models.source import Source
 from app.tasks.celery_app import celery
+from scraper.autodev import AutoDevPoller
 from scraper.carmax import CarMaxPoller
 from scraper.carvana import CarvanaPoller
+from scraper.ebay import EBayMotorsPoller
 from scraper.marketcheck import MarketCheckPoller
 from scraper.normalizer import normalize
 
@@ -61,7 +63,7 @@ async def _upsert_listings(source_name: str, raw_listings) -> None:
                     make=norm["make"],
                     model=norm["model"],
                     trim=norm["trim"],
-                    vin=norm["vin"],
+                    vin=None,  # populated later by the VIN decode task once vehicle record exists
                     condition=norm["condition"],
                     color_exterior=norm["color_exterior"],
                     color_interior=norm["color_interior"],
@@ -109,6 +111,26 @@ async def _upsert_listings(source_name: str, raw_listings) -> None:
 
         await db.commit()
     log.info("upsert_complete", source=source_name, count=len(raw_listings))
+
+
+@celery.task(name="app.tasks.ingest.poll_autodev", bind=True, max_retries=3)
+def poll_autodev(self):
+    try:
+        listings = _run(AutoDevPoller().fetch())
+        _run(_upsert_listings("autodev", listings))
+    except Exception as exc:
+        log.error("poll_autodev_failed", error=str(exc))
+        raise self.retry(exc=exc, countdown=60)
+
+
+@celery.task(name="app.tasks.ingest.poll_ebay", bind=True, max_retries=3)
+def poll_ebay(self):
+    try:
+        listings = _run(EBayMotorsPoller().fetch())
+        _run(_upsert_listings("ebay", listings))
+    except Exception as exc:
+        log.error("poll_ebay_failed", error=str(exc))
+        raise self.retry(exc=exc, countdown=60)
 
 
 @celery.task(name="app.tasks.ingest.poll_carmax", bind=True, max_retries=3)

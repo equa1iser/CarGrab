@@ -83,13 +83,28 @@ npm run dev
 
 ### 6 — Populate with real listings
 
-The Celery scheduler polls CarMax every 30 minutes automatically. To load data immediately:
+**Option A — Seed data (works immediately, no API key needed):**
 
 ```bash
-docker exec cargrab-celery-1 celery -A app.tasks.celery_app call app.tasks.ingest.poll_carmax
+docker exec cargrab-backend-1 python seed.py
 ```
 
-Wait ~60 seconds and refresh the homepage.
+This inserts 30 realistic demo listings (Toyota, Honda, Ford, BMW, Tesla, etc.) directly into the database.
+
+**Option B — Live data via Auto.dev (requires free API key):**
+
+Add your key to `.env`:
+```
+AUTODEV_API_KEY=your_key_here
+```
+
+Then restart and trigger a poll:
+```bash
+docker compose up -d --force-recreate backend celery
+docker exec cargrab-celery-1 celery -A app.tasks.celery_app call app.tasks.ingest.poll_autodev
+```
+
+Wait ~2 minutes (5 zip codes × 10 pages). The homepage will show ~900 real dealer listings with photos.
 
 ---
 
@@ -129,9 +144,12 @@ cargrab/
 │   ├── scraper/
 │   │   ├── base.py              # BaseSource ABC + RawListing
 │   │   ├── normalizer.py        # RawListing → DB-ready dict
-│   │   ├── carmax.py            # CarMax unofficial API poller
+│   │   ├── autodev.py           # Auto.dev dealer inventory API (free tier)
+│   │   ├── ebay.py              # eBay Motors Browse API (free)
+│   │   ├── carmax.py            # CarMax Playwright scraper (residential IP req'd)
 │   │   ├── marketcheck.py       # MarketCheck API poller
 │   │   └── carvana.py           # Stub (awaiting credentials)
+│   ├── seed.py                  # 30 realistic demo listings for local dev
 │   ├── migrations/              # Alembic migration files
 │   └── requirements.txt
 ├── frontend/
@@ -201,14 +219,21 @@ All endpoints live at `http://localhost:8000/api/v1/`. The full interactive docs
 
 ## Data Sources
 
-| Source | Type | Cost | Notes |
-|--------|------|------|-------|
-| **CarMax** | Unofficial API | Free | No key needed. Gracefully disabled on legal contact. |
-| **MarketCheck** | Licensed API | ~$200–$2k/mo | Set `MARKETCHECK_API_KEY` in `.env` to enable. |
-| **NHTSA** | Government API | Free | VIN decode + safety recalls. No key. Permanently cached by VIN. |
-| **Carvana** | Partner API | TBD | Set `CARVANA_API_KEY` when partner access is obtained. |
+| Source | Type | Cost | Status | Notes |
+|--------|------|------|--------|-------|
+| **Auto.dev** | Licensed API | Free (1k calls/mo) | Active | Best free source. Real dealer inventory. Set `AUTODEV_API_KEY`. Sign up at [auto.dev](https://auto.dev) |
+| **eBay Motors** | Official API | Free | Active | Private + dealer listings. Set `EBAY_APP_ID` + `EBAY_CERT_ID`. Register at [developer.ebay.com](https://developer.ebay.com) |
+| **CarMax** | Unofficial API | Free | Blocked | Blocked by Akamai on cloud/Docker IPs. Works from residential ISP. |
+| **MarketCheck** | Licensed API | ~$200–$2k/mo | Key-gated | Set `MARKETCHECK_API_KEY` in `.env` to enable. |
+| **NHTSA** | Government API | Free | Active | VIN decode + safety recalls. No key. Permanently cached by VIN. |
+| **CarAPI** | Public API | Free | Active | Make/model/trim database powering search autocomplete. No key needed. |
+| **Carvana** | Partner API | TBD | Stub | Set `CARVANA_API_KEY` when partner access is obtained. |
+
+**Priority order**: Auto.dev → eBay Motors → MarketCheck (paid) → CarMax (residential IP only)
 
 **Off-limits for scraping**: Autotrader, Cars.com, CarGurus, Craigslist — all have active ToS enforcement with precedent ($31M+ settlements).
+
+> **CarMax + Akamai**: CarMax's search API is protected by Akamai Bot Manager, which blocks all requests from cloud/Docker IP ranges (including residential VPS providers). The Playwright-based scraper in `scraper/carmax.py` will work from a home internet connection but not from any cloud host. Use the seed script for dev/demo.
 
 ---
 
@@ -220,11 +245,13 @@ All `price` values in the database and API are **integer cents** (e.g. $24,500 �
 
 ## Polling Schedule
 
-| Task | Interval |
-|------|----------|
-| Poll CarMax | Every 30 minutes |
-| Poll MarketCheck | Every 15 minutes |
-| Check price alerts | Every 5 minutes |
+| Task | Interval | Notes |
+|------|----------|-------|
+| Poll Auto.dev | Every 60 minutes | Conserves free-tier quota (1k calls/month) |
+| Poll eBay Motors | Every 30 minutes | Free developer tier |
+| Poll CarMax | Every 30 minutes | Requires residential IP to pass Akamai |
+| Poll MarketCheck | Every 15 minutes | Requires paid API key |
+| Check price alerts | Every 5 minutes | |
 
 ---
 
@@ -249,7 +276,10 @@ Copy `.env.example` to `.env`. All defaults work for local dev.
 | `REDIS_URL` | Yes | Redis connection string |
 | `JWT_SECRET_KEY` | Yes | **Change for production** |
 | `CORS_ORIGINS` | Yes | JSON array: `["http://localhost:3000"]` |
-| `MARKETCHECK_API_KEY` | No | Enables MarketCheck listings |
+| `AUTODEV_API_KEY` | No | Enables Auto.dev dealer inventory (free tier: 1k calls/month) |
+| `EBAY_APP_ID` | No | eBay Motors App ID — free developer account at developer.ebay.com |
+| `EBAY_CERT_ID` | No | eBay Motors Cert ID (required alongside App ID) |
+| `MARKETCHECK_API_KEY` | No | Enables MarketCheck listings (paid) |
 | `CARVANA_API_KEY` | No | Enables Carvana listings |
 | `SENTRY_DSN` | No | Error tracking |
 

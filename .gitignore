@@ -18,9 +18,8 @@ build/
 htmlcov/
 .coverage
 
-# Alembic
-backend/migrations/versions/*.py
-!backend/migrations/versions/.gitkeep
+# Alembic — track all migration files
+# (auto-generated migrations should be reviewed before committing)
 
 # Node
 node_modules/
