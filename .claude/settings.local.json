@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:demo.worldwideview.dev)",
+      "WebSearch",
+      "Bash(Get-ChildItem -Path \"C:\\\\Projects\\\\Websites\\\\CarGrab\" -Force)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(New-Item -ItemType File -Path \"C:\\\\Users\\\\gunte\\\\.claude\\\\plans\\\\i-want-you-to-keen-meteor-agent-a162f571445eaa752.md\" -Force)",
+      "Bash(Out-Null)",
+      "Bash(Write-Output \"Created\")",
+      "PowerShell(New-Item *)",
+      "Bash(conda run *)",
+      "Bash(del *)",
+      "Bash(npx create-next-app@15 frontend --typescript --tailwind --app --src-dir --import-alias \"@/*\" --no-eslint --no-git --yes)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(where node *)",
+      "Bash(nvm list *)",
+      "Bash(fnm list *)",
+      "Bash(volta list *)",
+      "Bash(docker info *)",
+      "Bash(winget *)",
+      "Bash(docker compose *)",
+      "Bash(/c/Program Files/nodejs/node.exe *)",
+      "Bash(\"/c/Program Files/nodejs/npm.cmd\" install --legacy-peer-deps)",
+      "Bash(\"/c/Program Files/nodejs/npm.cmd\" run build)",
+      "Bash(\"/c/Program Files/nodejs/npm.cmd\" install react-is --legacy-peer-deps)",
+      "Bash(curl *)",
+      "Bash(\"/c/Program Files/nodejs/npm.cmd\" run dev)",
+      "Bash(gh auth *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
