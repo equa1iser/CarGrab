@@ -14,6 +14,8 @@ from app.models.photo import Photo
 from app.models.price_history import PriceHistory
 from app.models.saved_search import PriceAlert
 from app.models.source import Source
+from app.models.user import User
+from app.services import email_service
 from app.tasks.celery_app import celery
 from scraper.autodev import AutoDevPoller
 from scraper.carmax import CarMaxPoller
@@ -250,17 +252,29 @@ def check_price_alerts():
     async def _check():
         async with AsyncSessionLocal() as db:
             rows = await db.execute(
-                select(PriceAlert)
+                select(PriceAlert, User.email, Listing.title, Listing.price, Listing.url)
                 .join(Listing, PriceAlert.listing_id == Listing.id)
+                .join(User, PriceAlert.user_id == User.id)
                 .where(
                     PriceAlert.triggered == False,  # noqa: E712
                     Listing.price <= PriceAlert.target_price,
+                    Listing.price != None,  # noqa: E711
                 )
             )
-            alerts = rows.scalars().all()
-            for alert in alerts:
+            results = rows.all()
+            for alert, user_email, listing_title, listing_price, listing_url in results:
                 alert.triggered = True
                 alert.triggered_at = datetime.now(timezone.utc)
-                log.info("price_alert_triggered", alert_id=str(alert.id))
+                log.info("price_alert_triggered", alert_id=str(alert.id), email=user_email)
+                try:
+                    await email_service.send_price_alert_email(
+                        to_email=user_email,
+                        listing_title=listing_title or "Vehicle",
+                        listing_url=listing_url,
+                        target_price_cents=alert.target_price,
+                        current_price_cents=listing_price,
+                    )
+                except Exception as e:
+                    log.error("price_alert_email_failed", error=str(e), alert_id=str(alert.id))
             await db.commit()
     _run(_check())

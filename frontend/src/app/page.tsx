@@ -1,6 +1,6 @@
 import { HeroSearch } from "@/components/search/HeroSearch";
 import { ListingGrid, ListingGridSkeleton } from "@/components/listings/ListingGrid";
-import { getFeatured, searchListings } from "@/lib/api";
+import { getFeatured, getListingStats, searchListings } from "@/lib/api";
 import { Suspense } from "react";
 import { TrendingDown, Clock, Database } from "lucide-react";
 
@@ -22,6 +22,35 @@ async function NewestListings() {
   }
 }
 
+async function StatsBanner() {
+  let totalListings = "—";
+  let sourceCount = "—";
+
+  try {
+    const stats = await getListingStats();
+    totalListings = stats.active_listings.toLocaleString();
+    sourceCount = String(stats.source_count);
+  } catch {
+    // Fallback to dashes — backend may be unavailable during build
+  }
+
+  return (
+    <div className="flex flex-wrap justify-center gap-8 text-center">
+      {[
+        { icon: Database, label: "Active Listings", value: totalListings },
+        { icon: Clock, label: "Updated", value: "Every 30 min" },
+        { icon: TrendingDown, label: "Sources", value: sourceCount },
+      ].map(({ icon: Icon, label, value }) => (
+        <div key={label} className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-cyan-400" />
+          <span className="text-sm text-slate-400">{label}:</span>
+          <span className="text-sm font-semibold text-white">{value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function HomePage() {
   return (
     <div className="pt-16">
@@ -31,19 +60,20 @@ export default function HomePage() {
       {/* Stats banner */}
       <div className="border-y border-white/6 bg-navy-900/30">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-wrap justify-center gap-8 text-center">
-            {[
-              { icon: Database, label: "Sources", value: "2+" },
-              { icon: Clock, label: "Updated", value: "Every 30 min" },
-              { icon: TrendingDown, label: "Avg. Savings", value: "vs MSRP" },
-            ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="flex items-center gap-2">
-                <Icon className="h-4 w-4 text-cyan-400" />
-                <span className="text-sm text-slate-400">{label}:</span>
-                <span className="text-sm font-semibold text-white">{value}</span>
+          <Suspense
+            fallback={
+              <div className="flex flex-wrap justify-center gap-8 text-center">
+                {["Active Listings", "Updated", "Sources"].map((label) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className="text-sm text-slate-400">{label}:</span>
+                    <span className="text-sm font-semibold text-white">—</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            }
+          >
+            <StatsBanner />
+          </Suspense>
         </div>
       </div>
 

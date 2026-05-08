@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
+import { Bookmark, Bell, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { FilterSidebar } from "@/components/search/FilterSidebar";
 import { SortBar } from "@/components/search/SortBar";
 import { ListingGrid, ListingGridSkeleton } from "@/components/listings/ListingGrid";
 import { Button } from "@/components/ui/Button";
-import { searchListings } from "@/lib/api";
-import { SearchParams } from "@/types";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/Input";
+import { createSavedSearch, getSearchFacets, searchListings } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/lib/toast-context";
+import { SearchFacets, SearchParams } from "@/types";
 
 function paramsFromURL(sp: URLSearchParams): SearchParams {
   return {
@@ -38,15 +41,92 @@ function buildURL(filters: SearchParams): string {
   return `/search?${params.toString()}`;
 }
 
+function SaveSearchPanel({
+  filters,
+  onSaved,
+  onClose,
+}: {
+  filters: SearchParams;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const { token, openSignIn } = useAuth();
+  const toast = useToast();
+  const [name, setName] = useState("");
+  const [alertEmail, setAlertEmail] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!token) { openSignIn(); return; }
+    setSaving(true);
+    try {
+      await createSavedSearch(token, { name: name || undefined, filters, alert_email: alertEmail });
+      toast("Search saved!");
+      onSaved();
+      onClose();
+    } catch {
+      toast("Failed to save search.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="glass rounded-xl border border-white/8 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-white">Save this search</p>
+        <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <Input
+        placeholder="Name (optional)"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <div
+          onClick={() => setAlertEmail((v) => !v)}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+            alertEmail ? "bg-cyan-500" : "bg-slate-600"
+          }`}
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+              alertEmail ? "translate-x-4" : "translate-x-0.5"
+            }`}
+          />
+        </div>
+        <Bell className="h-3.5 w-3.5 text-slate-400" />
+        <span className="text-xs text-slate-400">Email me new matches</span>
+      </label>
+      <div className="flex gap-2">
+        <Button size="sm" onClick={handleSave} disabled={saving} className="flex-1">
+          {saving ? "Saving…" : "Save"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
 export function SearchPageClient() {
   const router = useRouter();
   const urlParams = useSearchParams();
   const [filters, setFilters] = useState<SearchParams>(() => paramsFromURL(urlParams));
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [facets, setFacets] = useState<SearchFacets | null>(null);
 
   useEffect(() => {
     setFilters(paramsFromURL(urlParams));
   }, [urlParams]);
+
+  useEffect(() => {
+    getSearchFacets()
+      .then(setFacets)
+      .catch(() => {});
+  }, []);
 
   const handleFilterChange = useCallback(
     (newFilters: SearchParams) => {
@@ -69,7 +149,7 @@ export function SearchPageClient() {
           {/* Sidebar — desktop */}
           <aside className="hidden md:block w-64 shrink-0">
             <div className="sticky top-24">
-              <FilterSidebar filters={filters} onChange={handleFilterChange} />
+              <FilterSidebar filters={filters} onChange={handleFilterChange} facets={facets} />
             </div>
           </aside>
 
@@ -82,6 +162,7 @@ export function SearchPageClient() {
                   filters={filters}
                   onChange={(f) => { handleFilterChange(f); setSidebarOpen(false); }}
                   onClose={() => setSidebarOpen(false)}
+                  facets={facets}
                 />
               </div>
             </div>
@@ -89,12 +170,31 @@ export function SearchPageClient() {
 
           {/* Main content */}
           <div className="flex-1 min-w-0 space-y-5">
-            <SortBar
-              total={data?.total ?? 0}
-              filters={filters}
-              onChange={handleFilterChange}
-              onOpenFilters={() => setSidebarOpen(true)}
-            />
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <SortBar
+                  total={data?.total ?? 0}
+                  filters={filters}
+                  onChange={handleFilterChange}
+                  onOpenFilters={() => setSidebarOpen(true)}
+                />
+              </div>
+              <button
+                onClick={() => setSaveOpen((v) => !v)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-400 hover:text-cyan-400 border border-white/10 hover:border-cyan-500/30 rounded-lg transition-colors whitespace-nowrap"
+              >
+                <Bookmark className="h-3.5 w-3.5" />
+                Save Search
+              </button>
+            </div>
+
+            {saveOpen && (
+              <SaveSearchPanel
+                filters={filters}
+                onSaved={() => {}}
+                onClose={() => setSaveOpen(false)}
+              />
+            )}
 
             {isLoading ? (
               <ListingGridSkeleton count={24} />

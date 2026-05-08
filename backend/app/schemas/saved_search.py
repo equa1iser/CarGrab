@@ -10,6 +10,10 @@ class SavedSearchCreate(BaseModel):
     alert_email: bool = False
 
 
+class SavedSearchUpdate(BaseModel):
+    alert_email: bool
+
+
 class SavedSearchResponse(BaseModel):
     id: uuid.UUID
     name: str | None

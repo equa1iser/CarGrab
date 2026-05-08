@@ -1,0 +1,15 @@
+# Replace "cargrab.example.com" with your actual domain.
+# Caddy will obtain a TLS certificate from Let's Encrypt automatically.
+# Ensure ports 80 and 443 are open and DNS points to this server.
+
+cargrab.example.com {
+	# Proxy /api/* to the backend service
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# Proxy all other traffic to the Next.js frontend
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

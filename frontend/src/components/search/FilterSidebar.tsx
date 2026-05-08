@@ -1,6 +1,6 @@
 "use client";
 
-import { SearchParams } from "@/types";
+import { SearchFacets, SearchParams } from "@/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { YEARS, US_STATES, formatPrice } from "@/lib/formatters";
@@ -10,6 +10,7 @@ interface Props {
   filters: SearchParams;
   onChange: (filters: SearchParams) => void;
   onClose?: () => void;
+  facets?: SearchFacets | null;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -21,7 +22,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function FilterSidebar({ filters, onChange, onClose }: Props) {
+export function FilterSidebar({ filters, onChange, onClose, facets }: Props) {
+  const conditionCounts = Object.fromEntries(
+    (facets?.conditions ?? []).map((f) => [f.value, f.count])
+  );
   function update(patch: Partial<SearchParams>) {
     onChange({ ...filters, ...patch, page: 1 });
   }
@@ -142,6 +146,9 @@ export function FilterSidebar({ filters, onChange, onClose }: Props) {
               }`}
             >
               {c}
+              {conditionCounts[c] != null && (
+                <span className="ml-1 opacity-50">({conditionCounts[c].toLocaleString()})</span>
+              )}
             </button>
           ))}
         </div>

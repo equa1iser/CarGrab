@@ -140,3 +140,24 @@ export interface UserListResponse {
   total: number;
   users: UserSummary[];
 }
+
+export interface PriceAlert {
+  id: string;
+  listing_id: string;
+  target_price: number;
+  triggered: boolean;
+  triggered_at: string | null;
+  created_at: string;
+}
+
+export interface ListingStats {
+  total_listings: number;
+  active_listings: number;
+  source_count: number;
+}
+
+export interface SearchFacets {
+  makes: { value: string; count: number }[];
+  states: { value: string; count: number }[];
+  conditions: { value: string; count: number }[];
+}

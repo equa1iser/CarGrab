@@ -1,4 +1,4 @@
-import { AdminStats, ListingCard, ListingDetail, PaginatedListings, SavedSearch, SearchParams, SourceStatus, User, UserListResponse } from "@/types";
+import { AdminStats, ListingCard, ListingDetail, ListingStats, PaginatedListings, PriceAlert, SavedSearch, SearchFacets, SearchParams, SourceStatus, User, UserListResponse } from "@/types";
 
 // Server components run inside Docker where `localhost` doesn't reach the
 // backend container. Use API_INTERNAL_URL (Docker service name) server-side
@@ -53,12 +53,12 @@ export function getSearchSuggestions(q: string): Promise<{ makes: string[]; mode
   return request(`/api/v1/search/suggestions?q=${encodeURIComponent(q)}`);
 }
 
-export function getSearchFacets(): Promise<{
-  makes: { value: string; count: number }[];
-  states: { value: string; count: number }[];
-  conditions: { value: string; count: number }[];
-}> {
+export function getSearchFacets(): Promise<SearchFacets> {
   return request("/api/v1/search/facets");
+}
+
+export function getListingStats(): Promise<ListingStats> {
+  return request("/api/v1/listings/stats");
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -115,8 +115,44 @@ export function createSavedSearch(
   });
 }
 
+export function updateSavedSearch(
+  token: string,
+  id: string,
+  data: { alert_email: boolean }
+): Promise<SavedSearch> {
+  return request(`/api/v1/saved-searches/${id}`, {
+    method: "PATCH",
+    headers: authHeader(token),
+    body: JSON.stringify(data),
+  });
+}
+
 export function deleteSavedSearch(token: string, id: string): Promise<void> {
   return request(`/api/v1/saved-searches/${id}`, {
+    method: "DELETE",
+    headers: authHeader(token),
+  });
+}
+
+// ── Price alerts ──────────────────────────────────────────────────────────────
+
+export function getAlerts(token: string): Promise<PriceAlert[]> {
+  return request("/api/v1/alerts", { headers: authHeader(token) });
+}
+
+export function createAlert(
+  token: string,
+  data: { listing_id: string; target_price: number }
+): Promise<PriceAlert> {
+  return request("/api/v1/alerts", {
+    method: "POST",
+    headers: authHeader(token),
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteAlert(token: string, id: string): Promise<void> {
+  return request(`/api/v1/alerts/${id}`, {
     method: "DELETE",
     headers: authHeader(token),
   });

@@ -13,6 +13,7 @@ from app.schemas.saved_search import (
     PriceAlertResponse,
     SavedSearchCreate,
     SavedSearchResponse,
+    SavedSearchUpdate,
 )
 
 router = APIRouter(tags=["saved"])
@@ -38,6 +39,25 @@ async def create_saved_search(
     ss = SavedSearch(user_id=user.id, **body.model_dump())
     db.add(ss)
     await db.flush()
+    return SavedSearchResponse.model_validate(ss)
+
+
+@router.patch("/saved-searches/{search_id}", response_model=SavedSearchResponse)
+async def update_saved_search(
+    search_id: uuid.UUID,
+    body: SavedSearchUpdate,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    row = await db.execute(
+        select(SavedSearch).where(SavedSearch.id == search_id, SavedSearch.user_id == user.id)
+    )
+    ss = row.scalar_one_or_none()
+    if not ss:
+        raise HTTPException(status_code=404, detail="Saved search not found")
+    ss.alert_email = body.alert_email
+    await db.commit()
+    await db.refresh(ss)
     return SavedSearchResponse.model_validate(ss)
 
 

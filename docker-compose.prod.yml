@@ -1,0 +1,44 @@
+# Production docker-compose — extends the base compose file.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Prerequisites:
+#   1. Edit Caddyfile: replace "cargrab.example.com" with your domain
+#   2. Set JWT_SECRET_KEY to a strong random value (openssl rand -hex 32)
+#   3. Ports 80 and 443 must be open (Caddy handles TLS via Let's Encrypt)
+
+services:
+  backend:
+    command: gunicorn app.main:app -k uvicorn.workers.UvicornWorker --workers 2 --bind 0.0.0.0:8000
+    restart: unless-stopped
+
+  celery:
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      target: runner        # uses the production Next.js build stage
+    environment:
+      NODE_ENV: production
+    command: node server.js
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"       # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

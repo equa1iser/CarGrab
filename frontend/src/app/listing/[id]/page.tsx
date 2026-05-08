@@ -10,6 +10,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { formatMileage, formatRelative } from "@/lib/formatters";
+import { PriceAlertSection } from "./PriceAlertSection";
 
 export const revalidate = 300;
 
@@ -134,6 +135,8 @@ export default async function ListingDetailPage({ params }: Props) {
                 </p>
               )}
             </GlassCard>
+
+            <PriceAlertSection listingId={listing.id} currentPrice={listing.price} />
           </div>
         </div>
 

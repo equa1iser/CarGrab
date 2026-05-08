@@ -2,17 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Bookmark, Trash2, Search, Lock, Loader2 } from "lucide-react";
+import { Bell, Bookmark, Trash2, Search, Lock, Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { formatDate } from "@/lib/formatters";
-import { getSavedSearches, deleteSavedSearch } from "@/lib/api";
+import { deleteSavedSearch, getSavedSearches, updateSavedSearch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/lib/toast-context";
 import { SavedSearch, SearchParams } from "@/types";
 
 export default function SavedPage() {
   const { user, token, openSignIn, openRegister } = useAuth();
+  const toast = useToast();
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,9 +42,23 @@ export default function SavedPage() {
     setSearches((prev) => prev.filter((s) => s.id !== id));
     try {
       await deleteSavedSearch(token, id);
+      toast("Search deleted.");
     } catch {
-      // Reload if delete failed server-side
+      toast("Failed to delete search.", "error");
       load();
+    }
+  }
+
+  async function handleToggleAlert(id: string, current: boolean) {
+    if (!token) return;
+    const next = !current;
+    setSearches((prev) => prev.map((s) => (s.id === id ? { ...s, alert_email: next } : s)));
+    try {
+      await updateSavedSearch(token, id, { alert_email: next });
+      toast(next ? "Email alerts enabled." : "Email alerts disabled.");
+    } catch {
+      setSearches((prev) => prev.map((s) => (s.id === id ? { ...s, alert_email: current } : s)));
+      toast("Failed to update alert setting.", "error");
     }
   }
 
@@ -68,7 +84,6 @@ export default function SavedPage() {
     return chips;
   }
 
-  // Not logged in
   if (!user) {
     return (
       <div className="pt-20 min-h-screen flex items-center justify-center px-4">
@@ -134,14 +149,9 @@ export default function SavedPage() {
                 <GlassCard key={ss.id} className="p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-white text-sm">
-                          {ss.name ?? "Unnamed search"}
-                        </h3>
-                        {ss.alert_email && (
-                          <Badge variant="cyan" className="text-xs">Email alerts on</Badge>
-                        )}
-                      </div>
+                      <h3 className="font-semibold text-white text-sm">
+                        {ss.name ?? "Unnamed search"}
+                      </h3>
                       {chips.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {chips.map((chip) => (
@@ -151,7 +161,20 @@ export default function SavedPage() {
                       )}
                       <p className="text-xs text-slate-500">Saved {formatDate(ss.created_at)}</p>
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Alert toggle */}
+                      <button
+                        onClick={() => handleToggleAlert(ss.id, ss.alert_email)}
+                        title={ss.alert_email ? "Email alerts on — click to disable" : "Enable email alerts"}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-colors ${
+                          ss.alert_email
+                            ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20"
+                            : "border-white/10 text-slate-500 hover:text-cyan-400 hover:border-cyan-500/20"
+                        }`}
+                      >
+                        <Bell className="h-3 w-3" />
+                        {ss.alert_email ? "Alerts on" : "Alerts off"}
+                      </button>
                       <Link href={buildSearchURL(ss.filters)}>
                         <Button variant="ghost" size="sm">
                           <Search className="h-3.5 w-3.5" />
