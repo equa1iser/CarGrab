@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -16,12 +16,14 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+type Suggestion = { label: string; type: "make" | "model" };
+
 export function HeroSearch() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [yearMin, setYearMin] = useState("");
   const [state, setState] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -32,11 +34,15 @@ export function HeroSearch() {
   useEffect(() => {
     if (debouncedQuery.length < 2) {
       setSuggestions([]);
+      setShowSuggestions(false);
       return;
     }
     getSearchSuggestions(debouncedQuery)
       .then(({ makes, models }) => {
-        const combined = [...makes, ...models].slice(0, 8);
+        const combined: Suggestion[] = [
+          ...makes.map((m): Suggestion => ({ label: m, type: "make" })),
+          ...models.map((m): Suggestion => ({ label: m, type: "model" })),
+        ].slice(0, 8);
         setSuggestions(combined);
         setShowSuggestions(combined.length > 0);
         setActiveIdx(-1);
@@ -44,7 +50,6 @@ export function HeroSearch() {
       .catch(() => setSuggestions([]));
   }, [debouncedQuery]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     if (!showSuggestions) return;
     const handler = (e: MouseEvent) => {
@@ -59,28 +64,32 @@ export function HeroSearch() {
     return () => document.removeEventListener("mousedown", handler);
   }, [showSuggestions]);
 
-  function selectSuggestion(suggestion: string) {
-    setQuery(suggestion);
-    setShowSuggestions(false);
-    navigate(suggestion);
-  }
-
-  function navigate(q: string) {
+  function buildParams(picked?: Suggestion): URLSearchParams {
     const params = new URLSearchParams();
-    if (q) params.set("query", q);
+    if (picked) {
+      params.set(picked.type === "make" ? "make" : "model", picked.label);
+    } else if (query) {
+      params.set("query", query);
+    }
     if (yearMin) params.set("year_min", yearMin);
     if (state) params.set("state", state);
-    router.push(`/search?${params.toString()}`);
+    return params;
+  }
+
+  function selectSuggestion(s: Suggestion) {
+    setQuery(s.label);
+    setShowSuggestions(false);
+    router.push(`/search?${buildParams(s).toString()}`);
   }
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setShowSuggestions(false);
-    navigate(query);
+    router.push(`/search?${buildParams().toString()}`);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (!showSuggestions) return;
+    if (!showSuggestions || suggestions.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1));
@@ -96,10 +105,12 @@ export function HeroSearch() {
   }
 
   return (
-    <section className="relative min-h-[70vh] flex flex-col items-center justify-center px-4 overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-navy-800/50 via-navy-950 to-navy-950 pointer-events-none" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
+    <section className="relative min-h-[70vh] flex flex-col items-center justify-center px-4">
+      {/* Background elements in their own overflow-hidden container so they don't clip the dropdown */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-b from-navy-800/50 via-navy-950 to-navy-950" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-cyan-500/5 rounded-full blur-3xl" />
+      </div>
 
       <div className="relative z-10 w-full max-w-3xl text-center">
         {/* Headline */}
@@ -132,20 +143,25 @@ export function HeroSearch() {
             {showSuggestions && suggestions.length > 0 && (
               <div
                 ref={dropdownRef}
-                className="absolute left-0 right-0 top-full mt-1 glass rounded-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden z-50"
+                className="absolute left-0 right-0 top-full mt-1 glass rounded-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-[200]"
               >
                 {suggestions.map((s, i) => (
                   <button
-                    key={s}
+                    key={`${s.type}-${s.label}`}
                     type="button"
                     onMouseDown={() => selectSuggestion(s)}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
                       i === activeIdx
                         ? "bg-cyan-500/15 text-cyan-400"
                         : "text-slate-300 hover:bg-white/5 hover:text-white"
                     }`}
                   >
-                    {s}
+                    <span>{s.label}</span>
+                    <span className={`text-[10px] uppercase tracking-wide ${
+                      i === activeIdx ? "text-cyan-500/60" : "text-slate-600"
+                    }`}>
+                      {s.type}
+                    </span>
                   </button>
                 ))}
               </div>

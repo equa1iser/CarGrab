@@ -3,6 +3,7 @@
 import { SearchFacets, SearchParams } from "@/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { AutocompleteInput } from "@/components/ui/AutocompleteInput";
 import { YEARS, US_STATES, formatPrice } from "@/lib/formatters";
 import { X } from "lucide-react";
 
@@ -61,19 +62,21 @@ export function FilterSidebar({ filters, onChange, onClose, facets }: Props) {
 
       {/* Make */}
       <Section title="Make">
-        <Input
+        <AutocompleteInput
+          field="make"
           placeholder="e.g. Toyota"
           value={filters.make ?? ""}
-          onChange={(e) => update({ make: e.target.value || undefined })}
+          onValueChange={(v) => update({ make: v || undefined })}
         />
       </Section>
 
       {/* Model */}
       <Section title="Model">
-        <Input
+        <AutocompleteInput
+          field="model"
           placeholder="e.g. Camry"
           value={filters.model ?? ""}
-          onChange={(e) => update({ model: e.target.value || undefined })}
+          onValueChange={(v) => update({ model: v || undefined })}
         />
       </Section>
 

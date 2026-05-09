@@ -1,4 +1,4 @@
-import { AdminStats, ListingCard, ListingDetail, ListingStats, PaginatedListings, PriceAlert, SavedSearch, SearchFacets, SearchParams, SourceStatus, User, UserListResponse } from "@/types";
+import { AdminStats, AiSearchResult, ListingCard, ListingDetail, ListingStats, PaginatedListings, PriceAlert, SavedSearch, SearchFacets, SearchParams, SourceStatus, User, UserListResponse } from "@/types";
 
 // Server components run inside Docker where `localhost` doesn't reach the
 // backend container. Use API_INTERNAL_URL (Docker service name) server-side
@@ -55,6 +55,13 @@ export function getSearchSuggestions(q: string): Promise<{ makes: string[]; mode
 
 export function getSearchFacets(): Promise<SearchFacets> {
   return request("/api/v1/search/facets");
+}
+
+export function parseAiQuery(query: string): Promise<AiSearchResult> {
+  return request("/api/v1/search/ai", {
+    method: "POST",
+    body: JSON.stringify({ query }),
+  });
 }
 
 export function getListingStats(): Promise<ListingStats> {

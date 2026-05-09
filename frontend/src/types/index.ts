@@ -161,3 +161,8 @@ export interface SearchFacets {
   states: { value: string; count: number }[];
   conditions: { value: string; count: number }[];
 }
+
+export interface AiSearchResult {
+  filters: SearchParams;
+  explanation: string | null;
+}

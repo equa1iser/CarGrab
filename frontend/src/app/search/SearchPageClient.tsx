@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
-import { Bookmark, Bell, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Bell, Bookmark, ChevronLeft, ChevronRight, Loader2, Sparkles, SlidersHorizontal, X } from "lucide-react";
 import { FilterSidebar } from "@/components/search/FilterSidebar";
 import { SortBar } from "@/components/search/SortBar";
 import { ListingGrid, ListingGridSkeleton } from "@/components/listings/ListingGrid";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { createSavedSearch, getSearchFacets, searchListings } from "@/lib/api";
+import { createSavedSearch, getSearchFacets, parseAiQuery, searchListings } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/lib/toast-context";
 import { SearchFacets, SearchParams } from "@/types";
@@ -113,10 +113,17 @@ function SaveSearchPanel({
 export function SearchPageClient() {
   const router = useRouter();
   const urlParams = useSearchParams();
+  const toast = useToast();
   const [filters, setFilters] = useState<SearchParams>(() => paramsFromURL(urlParams));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [facets, setFacets] = useState<SearchFacets | null>(null);
+
+  // AI mode state
+  const [aiMode, setAiMode] = useState(false);
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     setFilters(paramsFromURL(urlParams));
@@ -135,6 +142,20 @@ export function SearchPageClient() {
     },
     [router]
   );
+
+  async function handleAiSearch() {
+    if (!aiQuery.trim()) return;
+    setAiLoading(true);
+    try {
+      const result = await parseAiQuery(aiQuery);
+      setAiExplanation(result.explanation);
+      handleFilterChange({ ...result.filters, sort: filters.sort, page: 1 });
+    } catch {
+      toast("AI search failed — check that the backend has an ANTHROPIC_API_KEY set.", "error");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   const { data, isLoading } = useSWR(
     ["search", filters],
@@ -169,7 +190,75 @@ export function SearchPageClient() {
           )}
 
           {/* Main content */}
-          <div className="flex-1 min-w-0 space-y-5">
+          <div className="flex-1 min-w-0 space-y-4">
+            {/* Mode toggle */}
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1 p-1 glass rounded-lg">
+                <button
+                  onClick={() => { setAiMode(false); setAiExplanation(null); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    !aiMode
+                      ? "bg-white/10 text-white"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  Filters
+                </button>
+                <button
+                  onClick={() => setAiMode(true)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    aiMode
+                      ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI Search
+                </button>
+              </div>
+            </div>
+
+            {/* AI Search panel */}
+            {aiMode && (
+              <div className="glass rounded-xl border border-cyan-500/20 p-4 space-y-3">
+                <p className="text-xs text-slate-400">
+                  Describe what you&apos;re looking for in plain English — AI will extract the filters automatically.
+                </p>
+                <textarea
+                  rows={2}
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleAiSearch();
+                    }
+                  }}
+                  placeholder='e.g. "red 4WD truck built before 2022 under $90K with low miles"'
+                  className="w-full bg-navy-800/60 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/40 resize-none transition-colors"
+                />
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={handleAiSearch}
+                    disabled={aiLoading || !aiQuery.trim()}
+                  >
+                    {aiLoading ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…</>
+                    ) : (
+                      <><Sparkles className="h-3.5 w-3.5" /> Search with AI</>
+                    )}
+                  </Button>
+                  {aiExplanation && (
+                    <p className="text-xs text-slate-400 italic flex-1">
+                      <span className="text-slate-500">Understood as:</span> {aiExplanation}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <SortBar

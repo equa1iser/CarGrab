@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     smtp_from: str = "noreply@cargrab.com"
     app_url: str = "http://localhost:3000"
 
+    # AI / Anthropic
+    anthropic_api_key: str = ""
+
     # Sentry
     sentry_dsn: str = ""
 
