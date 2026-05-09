@@ -24,7 +24,7 @@ git push origin master
 ---
 
 ## Project Overview
-CarGrab is a used car listing aggregator. It pulls listings from multiple sources (CarMax, MarketCheck, Carvana) into one searchable interface. The backend is also designed to serve a future mobile app.
+CarGrab is a used car listing aggregator. It pulls listings from multiple sources (Auto.dev, eBay Motors, CarMax, MarketCheck) into one searchable interface with AI-powered natural language search. The backend is also designed to serve a future mobile app.
 
 ## Environment Setup
 
@@ -82,18 +82,20 @@ CarGrab/
 │   │   ├── models/       # SQLAlchemy ORM models (7 tables)
 │   │   ├── schemas/      # Pydantic request/response DTOs
 │   │   ├── api/v1/       # Route files (listings, search, vin, auth, saved)
-│   │   ├── services/     # Business logic (listing, vin, cache, auth)
+│   │   ├── services/     # Business logic (listing, vin, cache, auth, nlp)
 │   │   └── tasks/        # Celery workers (ingest, beat schedule)
 │   ├── scraper/          # Data source pollers
 │   │   ├── base.py       # BaseSource ABC + RawListing dataclass
 │   │   ├── normalizer.py # Source-agnostic normalization
-│   │   ├── carmax.py     # CarMax unofficial API (free)
+│   │   ├── autodev.py    # Auto.dev dealer inventory API (25 metro zips)
+│   │   ├── ebay.py       # eBay Motors Browse API (20 targeted queries)
+│   │   ├── carmax.py     # CarMax Playwright scraper (residential IP req'd)
 │   │   ├── marketcheck.py# MarketCheck commercial API (key required)
 │   │   └── carvana.py    # Carvana stub (awaiting credentials)
 │   └── migrations/       # Alembic migrations
 ├── frontend/             # Next.js 15 + TypeScript + Tailwind v4
 │   └── src/
-│       ├── app/          # App Router pages
+│       ├── app/          # App Router pages (home, search, listing, admin)
 │       ├── components/   # UI, layout, listings, search components
 │       ├── lib/          # api.ts, formatters.ts
 │       └── types/        # Shared TypeScript interfaces
@@ -122,8 +124,9 @@ Versioned REST at `/api/v1/`. Public endpoints are open; user endpoints require 
 GET  /api/v1/listings              # search + filter + paginate
 GET  /api/v1/listings/featured     # 8 newest (homepage)
 GET  /api/v1/listings/{id}         # full detail with photos + specs
-GET  /api/v1/search/suggestions    # make/model autocomplete
+GET  /api/v1/search/suggestions    # make/model autocomplete (DB + CarAPI)
 GET  /api/v1/search/facets         # counts for sidebar filters
+POST /api/v1/search/ai             # NL query → structured filters (Claude or rule-based fallback)
 GET  /api/v1/vin/{vin}             # decode via NHTSA (free, cached)
 POST /api/v1/auth/register
 POST /api/v1/auth/login
@@ -205,12 +208,13 @@ See `.env.example` for the full list. Key ones:
 | `AUTODEV_API_KEY` | Optional — enables Auto.dev dealer inventory (free tier: 1k calls/month) |
 | `EBAY_APP_ID` | Optional — eBay Motors App ID (free developer account) |
 | `EBAY_CERT_ID` | Optional — eBay Motors Cert ID (required alongside App ID) |
+| `ANTHROPIC_API_KEY` | Optional — enables Claude-powered AI search; falls back to rule-based NLP without it |
 | `MARKETCHECK_API_KEY` | Optional — enables MarketCheck listings (paid) |
 | `CARVANA_API_KEY` | Optional — enables Carvana listings |
 
 ## Seed Data
 
-The repo ships with `backend/seed.py` — 30 realistic listings (Toyota, Honda, Ford, BMW, Tesla, etc.) seeded directly into the database. Useful for local dev without a live data source.
+The repo ships with `backend/seed.py` — 150 realistic listings across 22 makes (Toyota, Ford, Honda, BMW, Tesla, Jeep, Subaru, etc.), all US regions, price range $9,200–$128,900, and varied conditions (used, certified, salvage). Useful for local dev without a live data source.
 
 ```bash
 docker exec cargrab-backend-1 python seed.py
@@ -223,3 +227,4 @@ docker exec cargrab-backend-1 python seed.py
 - **Photo caching**: Photos are hot-linked from source CDNs. Add a Celery task to download primary photos to S3/R2 and populate a `photo_cached_url` column.
 - **Mobile app**: The backend API is mobile-ready (JWT auth, versioned routes, proper CORS). Add the mobile app's origin to `CORS_ORIGINS` in `.env`.
 - **Production deployment**: Add `caddy` service to `docker-compose.yml` for TLS termination. Swap `uvicorn --reload` for `gunicorn -k uvicorn.workers.UvicornWorker`.
+- **AI search model**: Currently uses `claude-haiku-4-5-20251001`. Upgrade to Sonnet for more accurate filter extraction on complex queries.

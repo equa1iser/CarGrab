@@ -1,6 +1,6 @@
 # CarGrab
 
-> One site to find the best used car deals — listings aggregated from CarMax, MarketCheck, and more.
+> One site to find the best used car deals — listings aggregated from Auto.dev, eBay Motors, CarMax, MarketCheck, and more.
 
 CarGrab is a full-stack used car listing aggregator. It polls multiple data sources on a schedule, normalizes all listings into a single database, and serves them through a fast REST API consumed by a dark-mode Next.js frontend. The backend is designed from the start to also power a mobile app.
 
@@ -23,7 +23,7 @@ CarGrab is a full-stack used car listing aggregator. It polls multiple data sour
 | Backend | Python 3.12, FastAPI 0.115, SQLAlchemy 2 (async), Alembic |
 | Database | PostgreSQL 16 |
 | Cache / Queue | Redis 7, Celery 5 |
-| Data sources | CarMax (unofficial API), MarketCheck (commercial), NHTSA (free VIN decoder) |
+| Data sources | Auto.dev (free API), eBay Motors (free API), CarMax (unofficial), MarketCheck (commercial), NHTSA (VIN decoder) |
 | Frontend | Next.js 15, TypeScript, Tailwind CSS v4 |
 | UI Style | Dark glassmorphism — navy + cyan accents (inspired by worldwideview.dev) |
 | Auth | JWT (python-jose + passlib/bcrypt) |
@@ -89,7 +89,7 @@ npm run dev
 docker exec cargrab-backend-1 python seed.py
 ```
 
-This inserts 30 realistic demo listings (Toyota, Honda, Ford, BMW, Tesla, etc.) directly into the database.
+This inserts 150 realistic demo listings across 22 makes, all US regions, $9,200–$128,900, including certified and salvage conditions.
 
 **Option B — Live data via Auto.dev (requires free API key):**
 
@@ -104,7 +104,16 @@ docker compose up -d --force-recreate backend celery
 docker exec cargrab-celery-1 celery -A app.tasks.celery_app call app.tasks.ingest.poll_autodev
 ```
 
-Wait ~2 minutes (5 zip codes × 10 pages). The homepage will show ~900 real dealer listings with photos.
+Wait ~5 minutes (25 metro zip codes × 10 pages). Expect 500–1,000 real dealer listings per cycle.
+
+**Option C — eBay Motors (free developer account):**
+
+```
+EBAY_APP_ID=your_app_id
+EBAY_CERT_ID=your_cert_id
+```
+
+Register at [developer.ebay.com](https://developer.ebay.com). Adds 2,000–5,000 private + dealer listings per poll cycle.
 
 ---
 
@@ -136,7 +145,8 @@ cargrab/
 │   │   │   ├── listing_service.py
 │   │   │   ├── vin_service.py   # NHTSA decode + recall count
 │   │   │   ├── cache_service.py # Redis get-or-set
-│   │   │   └── auth_service.py  # JWT + bcrypt
+│   │   │   ├── auth_service.py  # JWT + bcrypt
+│   │   │   └── nlp_service.py   # Rule-based NL query parser (AI search fallback)
 │   │   └── tasks/
 │   │       ├── celery_app.py
 │   │       ├── beat_schedule.py # Cron schedule
@@ -149,15 +159,16 @@ cargrab/
 │   │   ├── carmax.py            # CarMax Playwright scraper (residential IP req'd)
 │   │   ├── marketcheck.py       # MarketCheck API poller
 │   │   └── carvana.py           # Stub (awaiting credentials)
-│   ├── seed.py                  # 30 realistic demo listings for local dev
+│   ├── seed.py                  # 150 realistic demo listings for local dev
 │   ├── migrations/              # Alembic migration files
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
 │       ├── app/
 │       │   ├── page.tsx         # Home — hero + featured grids
-│       │   ├── search/          # Search page (filter sidebar + results)
+│       │   ├── search/          # Search page (filter sidebar + AI mode toggle)
 │       │   ├── listing/[id]/    # Listing detail (gallery, specs, chart)
+│       │   ├── admin/           # Admin dashboard (listing stats, source health)
 │       │   └── saved/           # Saved searches (auth-gated)
 │       ├── components/
 │       │   ├── ui/              # GlassCard, Button, Badge, Input, Spinner
@@ -193,8 +204,9 @@ All endpoints live at `http://localhost:8000/api/v1/`. The full interactive docs
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/search/suggestions?q=` | Make/model autocomplete |
+| `GET` | `/search/suggestions?q=` | Make/model autocomplete (DB + CarAPI) |
 | `GET` | `/search/facets` | Count per make / state / condition |
+| `POST` | `/search/ai` | Natural language query → structured filters (Claude or rule-based fallback) |
 | `GET` | `/vin/{vin}` | Decode VIN via NHTSA + recall count |
 
 ### Auth
@@ -279,6 +291,7 @@ Copy `.env.example` to `.env`. All defaults work for local dev.
 | `AUTODEV_API_KEY` | No | Enables Auto.dev dealer inventory (free tier: 1k calls/month) |
 | `EBAY_APP_ID` | No | eBay Motors App ID — free developer account at developer.ebay.com |
 | `EBAY_CERT_ID` | No | eBay Motors Cert ID (required alongside App ID) |
+| `ANTHROPIC_API_KEY` | No | Enables Claude AI for natural language search; falls back to rule-based NLP without it |
 | `MARKETCHECK_API_KEY` | No | Enables MarketCheck listings (paid) |
 | `CARVANA_API_KEY` | No | Enables Carvana listings |
 | `SENTRY_DSN` | No | Error tracking |
