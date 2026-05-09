@@ -6,9 +6,7 @@ Usage (from inside the backend container or with DB accessible):
 """
 import asyncio
 import uuid
-from datetime import datetime, timezone
 
-from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.config import settings
@@ -260,16 +258,6 @@ FALLBACK_PHOTOS = [
 
 
 async def main() -> None:
-    async with Session() as db:
-        result = await db.execute(
-            select(db.__class__)
-            .from_statement(
-                __import__("sqlalchemy", fromlist=["text"]).text(
-                    "SELECT id FROM sources WHERE name = 'carmax' LIMIT 1"
-                )
-            )
-        )
-
     async with Session() as db:
         from sqlalchemy import text as sql_text
         row = (await db.execute(sql_text("SELECT id FROM sources WHERE name = 'carmax' LIMIT 1"))).fetchone()
