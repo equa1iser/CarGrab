@@ -25,13 +25,32 @@ _CATEGORY_ID = "6001"  # Cars & Trucks
 _LIMIT = 200
 _DELAY = 0.5
 
-# Search queries to cover a wide range of listings
+# Search queries — mix of popular makes, body types, and year ranges for broad coverage
 _QUERIES = [
-    "used car sedan 2018 2019 2020",
-    "used truck pickup 2018 2019 2020",
-    "used SUV crossover 2018 2019 2020",
-    "used car sedan 2021 2022 2023",
-    "used SUV crossover 2021 2022 2023",
+    # Popular makes
+    "Toyota used car low miles",
+    "Ford F-150 used truck",
+    "Honda Civic Accord used",
+    "Chevrolet Silverado used truck",
+    "BMW used sedan low miles",
+    "Mercedes-Benz used C E class",
+    "Nissan used car",
+    "Jeep Wrangler Grand Cherokee used",
+    "Subaru Outback Forester used",
+    "Hyundai Kia used car",
+    # Body types
+    "used pickup truck 4x4 4WD",
+    "used SUV crossover low mileage",
+    "used sports car coupe",
+    "used luxury sedan",
+    # Year ranges
+    "used car 2019 2020 2021 low miles",
+    "used car 2022 2023 sedan SUV",
+    "certified pre-owned car",
+    # Drivetrain / powertrain
+    "used AWD SUV crossover",
+    "used electric car Tesla hybrid",
+    "used car under 15000",
 ]
 
 # Module-level token cache

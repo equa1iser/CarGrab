@@ -26,11 +26,31 @@ _DELAY = 1.0
 _MAX_PAGES = 10   # cap per zip — 200 listings per search conserves free-tier quota
 
 _SEARCHES = [
-    {"zip": "10001", "radius": 150},  # New York area
-    {"zip": "60601", "radius": 150},  # Chicago area
-    {"zip": "90210", "radius": 150},  # LA area
-    {"zip": "77001", "radius": 150},  # Houston area
-    {"zip": "30301", "radius": 150},  # Atlanta area
+    {"zip": "10001", "radius": 150},  # New York
+    {"zip": "60601", "radius": 150},  # Chicago
+    {"zip": "90210", "radius": 150},  # Los Angeles
+    {"zip": "77001", "radius": 150},  # Houston
+    {"zip": "30301", "radius": 150},  # Atlanta
+    {"zip": "85001", "radius": 150},  # Phoenix
+    {"zip": "19103", "radius": 150},  # Philadelphia
+    {"zip": "78201", "radius": 150},  # San Antonio
+    {"zip": "92101", "radius": 150},  # San Diego
+    {"zip": "75201", "radius": 150},  # Dallas
+    {"zip": "95101", "radius": 150},  # San Jose
+    {"zip": "78701", "radius": 150},  # Austin
+    {"zip": "32201", "radius": 150},  # Jacksonville
+    {"zip": "76101", "radius": 150},  # Fort Worth
+    {"zip": "43201", "radius": 150},  # Columbus
+    {"zip": "28201", "radius": 150},  # Charlotte
+    {"zip": "46201", "radius": 150},  # Indianapolis
+    {"zip": "94105", "radius": 150},  # San Francisco
+    {"zip": "98101", "radius": 150},  # Seattle
+    {"zip": "80202", "radius": 150},  # Denver
+    {"zip": "37201", "radius": 150},  # Nashville
+    {"zip": "73101", "radius": 150},  # Oklahoma City
+    {"zip": "79901", "radius": 150},  # El Paso
+    {"zip": "20001", "radius": 150},  # Washington DC
+    {"zip": "89101", "radius": 150},  # Las Vegas
 ]
 
 
