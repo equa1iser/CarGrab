@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models.listing import Listing
 from app.services import listing_service
 from app.services.cache_service import cache_get, cache_set
+from app.services.nlp_service import rule_based_parse
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -44,26 +45,27 @@ class AiSearchRequest(BaseModel):
 
 @router.post("/ai")
 async def ai_search(body: AiSearchRequest):
-    if not settings.anthropic_api_key:
-        raise HTTPException(status_code=503, detail="AI search is not configured on this server.")
+    # Primary: Claude (if API key is configured)
+    if settings.anthropic_api_key:
+        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        try:
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=512,
+                system=_AI_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": body.query}],
+            )
+            raw = message.content[0].text.strip()
+            data = json.loads(raw)
+            explanation = data.pop("explanation", None)
+            return {"filters": data, "explanation": explanation, "source": "claude"}
+        except (json.JSONDecodeError, anthropic.APIError):
+            # Fall through to rule-based on any AI failure
+            pass
 
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-    try:
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=512,
-            system=_AI_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": body.query}],
-        )
-        raw = message.content[0].text.strip()
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=422, detail="AI returned an unexpected response. Please try rephrasing your query.")
-    except anthropic.APIError as e:
-        raise HTTPException(status_code=502, detail=f"AI service error: {e}")
-
-    explanation = data.pop("explanation", None)
-    return {"filters": data, "explanation": explanation}
+    # Fallback: rule-based NLP parser (no API key required)
+    filters, explanation = rule_based_parse(body.query)
+    return {"filters": filters, "explanation": explanation, "source": "rules"}
 
 _CARAPI_BASE = "https://carapi.app/api"
 _CARAPI_MAKES_TTL = 86400   # cache for 24 h — make list is stable
